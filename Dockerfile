@@ -31,14 +31,14 @@ RUN mkdir -p /opt/jars \
  && curl -sSfL -o "${ICEBERG_SPARK_JAR}" \
       "https://repo1.maven.org/maven2/org/apache/iceberg/${ICEBERG_ARTIFACT}/${ICEBERG_VERSION}/${ICEBERG_ARTIFACT}-${ICEBERG_VERSION}.jar"
 
+# The package is built from src/, so src/ must be in place before the install.
 COPY pyproject.toml README.md ./
-RUN pip install --no-cache-dir ".[dev]"
-
 COPY src/ src/
+RUN pip install --no-cache-dir -e ".[dev]"
+
 COPY tests/ tests/
 COPY contracts/ contracts/
 COPY demo/ demo/
-RUN pip install --no-cache-dir -e . --no-deps
 
 # Spark launches Python workers by name; without this it picks whatever python3 is on PATH.
 ENV PYSPARK_PYTHON=/usr/local/bin/python

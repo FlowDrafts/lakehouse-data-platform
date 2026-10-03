@@ -124,9 +124,9 @@ jobs:
         run: |
           pip install "apache-airflow==3.3.2" apache-airflow-providers-cncf-kubernetes \
             --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt
-          python -c "
-          from airflow.models import DagBag
-          bag = DagBag('deploy/airflow/dags', include_examples=False)
+          AIRFLOW__CORE__LOAD_EXAMPLES=False python -c "
+          from airflow.dag_processing.dagbag import DagBag
+          bag = DagBag('deploy/airflow/dags')
           assert not bag.import_errors, bag.import_errors
           print(len(bag.dags), 'DAG(s) loaded')"
 

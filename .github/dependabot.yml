@@ -4,6 +4,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Spark must match an Iceberg runtime build (none exists for Spark 4.2 yet). Upgrade by hand.
+      - dependency-name: pyspark
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      # Pinned to the version CI's lint job installs. Upgrade both together, by hand.
+      - dependency-name: ruff
     groups:
       python:
         patterns: ["*"]

@@ -15,9 +15,9 @@ and built into gold on a branch that a **publish gate** checks before anyone can
 customer sees is read live from its service, and an optional Flink lane serves labelled,
 unverified signals in seconds.
 
+**[Detailed architecture (hand-drawn) →](docs/architecture/lakehouse_architecture_detailed.png)**
+Every component and connection, with its [editable draw.io source](docs/architecture/lakehouse_architecture.drawio).
 The full walkthrough is in the [technical design document](docs/architecture/lakehouse-design.md).
-The detailed, editable diagram is [lakehouse_architecture.drawio](docs/architecture/lakehouse_architecture.drawio);
-the image above is rendered from [its Mermaid source](docs/architecture/lakehouse_architecture.mmd).
 
 ## What It Guarantees
 
@@ -61,7 +61,7 @@ Why each was chosen, and what it costs, is in the [decision log](docs/decisions/
 
 | Area | Where | What's there |
 |---|---|---|
-| Design | [docs/architecture/](docs/architecture/lakehouse-design.md) | Technical design document, and the architecture diagram |
+| Design | [docs/architecture/](docs/architecture/lakehouse-design.md) | Technical design document, the overview diagram, and the detailed hand-drawn diagram |
 | Decisions | [docs/decisions/](docs/decisions/00-decision-register.md) | Decision log and ten architecture decision records |
 | Operations | [docs/runbooks/](docs/runbooks/00-runbook-index.md) | On-call runbooks, mapped to alerts |
 | Source | [src/lakehouse/](src/lakehouse/) | The hard problems, the ordered merge, and the plumbing stubs |

@@ -95,9 +95,13 @@ and inconsistent, and nobody can say whether a table is current or correct.
 
 ![Lakehouse architecture](lakehouse_architecture.png)
 
-*Figure 1. The platform in five layers. The detailed, editable version is
-[lakehouse_architecture.drawio](lakehouse_architecture.drawio); the figure is rendered from
+*Figure 1. The platform in five layers, rendered from
 [lakehouse_architecture.mmd](lakehouse_architecture.mmd) by `make diagram`.*
+
+![Detailed architecture, hand-drawn](lakehouse_architecture_detailed.png)
+
+*Figure 2. The detailed architecture, drawn by hand in draw.io; the editable source is
+[lakehouse_architecture.drawio](lakehouse_architecture.drawio).*
 
 Continuous sources arrive through Kafka and bounded ones through S3; gold passes the publish gate
 before serving. Two lanes bypass the lake: money read live from its service, and the Flink fast

@@ -5,15 +5,6 @@
   <b>No gold table becomes readable until it is proven complete and correct, to the paise.</b>
 </p>
 
-<p align="center">
-  <a href="https://github.com/FlowDrafts/lakehouse-data-platform/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/FlowDrafts/lakehouse-data-platform/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Python 3.14" src="https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white">
-  <img alt="Apache Spark 4.1" src="https://img.shields.io/badge/Apache_Spark-4.1-E25A1C?style=flat-square&logo=apachespark&logoColor=white">
-  <img alt="Apache Iceberg 1.11" src="https://img.shields.io/badge/Apache_Iceberg-1.11-2C6BB5?style=flat-square">
-  <img alt="Data contracts: ODCS 3.2" src="https://img.shields.io/badge/Data_contracts-ODCS_3.2-0F766E?style=flat-square">
-  <img alt="Status: reference implementation" src="https://img.shields.io/badge/Status-reference_implementation-6B7280?style=flat-square">
-</p>
-
 ## Architecture
 
 ![Lakehouse architecture: sources, ingestion, the Iceberg lakehouse with its publish gate, serving, and consumers](docs/architecture/lakehouse_architecture.png)

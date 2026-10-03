@@ -8,7 +8,7 @@
 | **Version** | 1.0 |
 | **Last updated** | 2026-10-03 |
 | **Author** | `Gaurav Garg` |
-| **Related documents** | Architecture diagram: [Figure 1](#61-architecture-overview), editable in [lakehouse_architecture.drawio](lakehouse_architecture.drawio) · Decision records: [00-decision-register.md](../decisions/00-decision-register.md) · Test plan: [tests/README.md](../../tests/README.md) · Runbooks: [00-runbook-index.md](../runbooks/00-runbook-index.md) · Deployment: [deploy/README.md](../../deploy/README.md) |
+| **Related documents** | Architecture diagram: [Figure 1](#61-architecture-overview), editable in [lakehouse_architecture.drawio](lakehouse_architecture.drawio) · Decision records: [00-decision-register.md](../decisions/00-decision-register.md) · Test plan: [tests/README.md](../../tests/README.md) · Spec for AI-assisted development: [docs/spec](../spec/README.md) · Runbooks: [00-runbook-index.md](../runbooks/00-runbook-index.md) · Deployment: [deploy/README.md](../../deploy/README.md) |
 
 ## 1. Executive Summary
 
@@ -377,7 +377,7 @@ reads all inputs at one tag.
 
 **Trade-offs.** Silver is as fresh as the slowest partition, and one failed merge holds the source.
 
-## 11. Testing Strategy
+## 11. Testing and Development
 
 Every test provokes a plausible **wrong answer**, not a crash, and asserts the specific wrong
 result a broken design would produce.
@@ -388,6 +388,18 @@ result a broken design would produce.
 
 The [test plan](../../tests/README.md) maps each test to the wrong answer it prevents, lists the
 cases planned but not yet written, and explains how to run them.
+
+**AI-assisted, spec-driven development.** The repository is built to be developed with an AI
+coding assistant working from the [spec](../spec/README.md):
+- a **constitution** of rules no change may break;
+- **user stories** whose acceptance criteria are test IDs;
+- a **technical plan** that records the engine behaviour to respect;
+- a **task backlog**.
+
+Each change starts as a plan the author reviews against the constitution. It is built test first,
+adds a mutation for any new guard, and updates the spec in the same change. CI (lint, tests,
+mutation testing, secret and dependency scans) gates every merge, and
+[CLAUDE.md](../../CLAUDE.md) points the assistant to the spec.
 
 ## 12. Risks and Mitigations
 

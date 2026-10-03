@@ -15,12 +15,12 @@ requires-python = ">=3.11"
 # newest usable Spark, and JDK 25 is outside Spark 4.1's supported set (see Makefile).
 #
 dependencies = [
-  "pyspark==4.1.3",          # Spark SQL with the Iceberg extensions
+  "pyspark==4.2.0",          # Spark SQL with the Iceberg extensions
   "pyyaml>=6.0",             # reads the data contracts and the Cube model in the contract check
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.2", "ruff==0.14.2"]  # ruff pinned to the version CI runs
+dev = ["pytest>=8.2", "ruff==0.16.9"]  # ruff pinned to the version CI runs
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -64,7 +64,7 @@ Why each was chosen, and what it costs, is in the [decision log](docs/decisions/
 | Design | [docs/architecture/](docs/architecture/lakehouse-design.md) | Technical design document, the overview diagram, and the detailed hand-drawn diagram |
 | Decisions | [docs/decisions/](docs/decisions/00-decision-register.md) | Decision log and ten architecture decision records |
 | Operations | [docs/runbooks/](docs/runbooks/00-runbook-index.md) | On-call runbooks, mapped to alerts |
-| Specifications | [docs/spec/](docs/spec/README.md) | The approved plans that drove the AI-assisted development |
+| Specification | [docs/spec/](docs/spec/README.md) | The spec for developing the project with an AI assistant: constitution, user stories, technical plan and task backlog |
 | Source | [src/lakehouse/](src/lakehouse/) | The hard problems, the ordered merge, and the plumbing stubs |
 | Tests | [tests/](tests/README.md) | Test plan, tests on a real Iceberg engine, mutation testing |
 | Demo | [demo/](demo/run.py) | The three problems end to end, printed step by step |

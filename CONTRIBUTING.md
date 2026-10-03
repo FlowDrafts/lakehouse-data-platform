@@ -18,8 +18,9 @@ Without `make`, see the plain commands in [tests/README.md](tests/README.md).
 ## Workflow
 
 1. **Branch** from `main`.
-2. **Plan anything non-trivial first.** Write what you'll change, why, and how you'll verify it.
-   If you work with an AI assistant, save the approved plan in [docs/spec/](docs/spec/README.md).
+2. **Start from the [spec](docs/spec/README.md).** Take a task from `tasks.md` (or add a user
+   story to `spec.md` first), and plan what you'll change and how you'll verify it before writing
+   code. With an AI assistant, follow the workflow in the spec's README.
 3. **Make the change, with its tests and docs** (see below).
 4. **Open a pull request.** [Code owners](.github/CODEOWNERS) review changes to contracts, deploy
    samples, table definitions and decisions.

@@ -12,7 +12,8 @@ three hard problems. Read [README.md](README.md) first, then the
   `ingestion/cdc_merge.py`, `publishing/publish_gate.py`; `pipeline.py` holds plumbing stubs.
 - `tests/`: the test plan (`tests/README.md`), tests on a real Iceberg engine, mutation testing
   (`tests/mutation/run.py`), and the contract check.
-- `docs/`: design, decisions (ADRs), runbooks, and the approved plans in `docs/spec/`.
+- `docs/`: design, decisions (ADRs), runbooks, and the spec in `docs/spec/` (constitution,
+  spec, plan, tasks). Start any work there.
 
 ## Commands
 
@@ -42,6 +43,7 @@ Lint with `ruff check .` and `ruff format --check .` (ruff 0.14.2, as in CI).
 
 ## Workflow
 
-1. Plan before changing anything non-trivial, and save the approved plan in `docs/spec/`.
+1. Start from `docs/spec/`: keep the constitution, take a task from `tasks.md`, and plan before
+   changing anything non-trivial. Update the spec (task, story, test IDs) in the same change.
 2. Before committing: `make test`, ruff, and `.venv/bin/python tests/mutation/run.py --check`.
 3. Never push, force-push, or rewrite history without the author's explicit approval.

@@ -1,32 +1,46 @@
-# Specifications
+# Spec: Developing This Project with an AI Assistant
 
-The plans that drove the AI-assisted development of this repository, reproduced as they were
-approved.
+This folder is the spec an AI coding assistant (such as Claude Code) or a person works from. It
+follows the [GitHub Spec Kit](https://github.com/github/spec-kit) structure: rules first, then
+what to build, how, and the tasks.
 
-## How They Were Used
+| File | Answers |
+|---|---|
+| [constitution.md](constitution.md) | Which rules can never be broken? |
+| [spec.md](spec.md) | What must the platform do, and how do we know? (user stories, acceptance criteria, test IDs) |
+| [plan.md](plan.md) | How is it built? (stack, where code lives, interfaces, engine behaviour to respect) |
+| [tasks.md](tasks.md) | What is done, and what is next? |
 
-The repository was built with Claude Code in **plan mode**:
-1. For each piece of work, the assistant first explored the repository and wrote a plan: the
-   context, the changes, and how they would be verified.
-2. The author reviewed the plan, sent it back with corrections where needed, and approved it.
-3. Only then was it implemented, and verified as the plan said: tests on a real Iceberg engine,
-   mutation testing, link and lint checks, and CI.
+[CLAUDE.md](../../CLAUDE.md) at the repository root points the assistant here, and lists the
+commands and conventions.
 
-The architecture itself, the choice of hard problems, and the trade-offs were decided in
-discussion before any of these plans; the plans turned those decisions into concrete work. Each
-plan describes the repository *as it was at that moment*, so later plans supersede earlier ones,
-and some file names they mention were changed afterwards.
+## The Workflow
 
-## The Plans
+1. **Pick a task** from [tasks.md](tasks.md). For something new, first add a user story with
+   acceptance criteria to [spec.md](spec.md), and a task for it.
+2. **Ask the assistant for a plan, not code.** In Claude Code, use plan mode. Point it at the
+   task, and have it read the constitution, the story and the plan.
+3. **Review the plan** against the [constitution](constitution.md): it must keep every rule,
+   name the test that proves the acceptance criterion, and add a mutation for any new guard.
+   Send it back until it does.
+4. **Implement test first:** write the failing test named in the acceptance criterion, then the
+   code, then the mutation entry.
+5. **Verify:**
+   ```sh
+   make test && ruff check . && ruff format --check .
+   .venv/bin/python tests/mutation/run.py --only <your-guard>
+   ```
+6. **Update the spec in the same change:** tick the task, mark the criterion ✅, add the test to
+   the [test plan](../../tests/README.md), and add an ADR if a decision was made.
+7. **Open a pull request** (see [CONTRIBUTING.md](../../CONTRIBUTING.md)).
 
-| # | Plan | What it produced |
-|---|---|---|
-| 1 | [Design document structure](01-design-document-structure.md) | The technical design document's industry-standard structure |
-| 2 | [Design document technical review](02-design-document-technical-review.md) | Corrections to technical claims, and tighter wording |
-| 3 | [Architecture decision records](03-architecture-decision-records.md) | The decision log and the ADRs in MADR format |
-| 4 | [Data contracts](04-data-contracts.md) | Sample contracts in the Open Data Contract Standard |
-| 5 | [CI workflows](05-ci-workflows.md) | CI, release, Dependabot and code owners |
-| 6 | [Hard problems and implementation](06-hard-problems-and-implementation.md) | The choice of the three hard problems from how the sources misbehave, and the code and tests for them |
-| 7 | [Independent review](07-independent-review.md) | A review of the whole repository against the brief, and the fixes that followed |
+## A Prompt to Start With
 
-Plans for routine housekeeping (renaming the project and publishing it) are not included.
+```text
+Read docs/spec/constitution.md, docs/spec/spec.md and docs/spec/plan.md.
+Plan task T05 from docs/spec/tasks.md. Do not write code yet.
+Your plan must: keep every rule in the constitution; name the test that proves acceptance
+criterion US-1 #9 and the wrong answer it guards against; add a mutation entry for any new
+guard; and list the docs to update. Flag anything in plan.md's "Engine behaviour to respect"
+that applies.
+```

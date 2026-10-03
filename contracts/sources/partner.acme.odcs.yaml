@@ -1,0 +1,69 @@
+# Sample data contract: a partner file feed. See ../README.md.
+apiVersion: v3.2.0
+kind: DataContract
+id: partner-acme-settlement
+name: partner.acme.settlement
+version: 1.0.0
+status: active
+domain: recharge
+description:
+  purpose: ACME's daily settlement file, one full snapshot per posting date, possibly in several parts.
+  limitations: Only the partner vouches for the content. It is also checked against our ledger and the bank statement.
+  usage: Loaded by the File Loader (ADR-04) into glue.silver.partner_settlement.
+
+schema:
+  - name: settlement
+    physicalName: acme_settlement_YYYYMMDD_NNN.csv
+    physicalType: file
+    properties:
+      - name: settlement_id
+        logicalType: string
+        primaryKey: true
+        required: true
+        classification: internal
+        quality:
+          - metric: duplicateValues
+            mustBe: 0
+      - name: posting_date
+        logicalType: date
+        required: true
+        classification: internal
+      - name: amount_paise
+        logicalType: integer
+        physicalType: bigint
+        required: true
+        classification: internal          # integer paise: "12.50" is rejected
+      - name: utr
+        logicalType: string
+        classification: internal          # bank payment reference, for the independent check
+
+slaProperties:
+  - property: frequency
+    value: 1
+    unit: d
+  - property: retention
+    value: 5
+    unit: y
+
+team:
+  name: partner-operations
+
+customProperties:
+  - property: deliveryMode
+    value: full_snapshot                  # or changes_only
+  - property: versionOrder
+    value: sequence_number                # never the partner's timestamp
+  - property: parts
+    value: manifest                       # each part states its number and the version's part count
+  - property: businessDayCutoff
+    value: "23:59 Asia/Kolkata"
+  - property: arrivalWindow
+    value: "02:00-08:00 Asia/Kolkata"     # the missing-file alert fires when it closes
+  - property: trailer
+    value: [row_count, amount_paise_total]  # per part
+  - property: truncationThreshold
+    value: 0.2                            # 20% fewer rows than the same weekday usually has: held
+  - property: reference
+    value: false                          # true: fast track, then a "reference updated" event
+  - property: optional
+    value: false                          # if missing, dependent gold is held

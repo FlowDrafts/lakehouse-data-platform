@@ -1,0 +1,92 @@
+%% Architecture overview, mirroring lakehouse_architecture.drawio (the detailed, editable version).
+%% Rendered to lakehouse_architecture.png by `make diagram`.
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 28, "rankSpacing": 32}, "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "fontSize": "15px", "lineColor": "#5b6577", "clusterBkg": "#fafbfc", "clusterBorder": "#c9d1dc"}}}%%
+flowchart TB
+  subgraph SRC["① Data sources"]
+    PG[("Postgres<br/>lending · insurance · recharge")]
+    EV["App events"]
+    PF["Partner and vendor files"]
+    OPS["Ops files"]
+    API["Third-party APIs"]
+  end
+
+  subgraph ING["② Ingestion"]
+    DBZ["Debezium<br/>PII tokenised in the transform chain"]
+    KAFKA[["Kafka · 7-day retention"]]
+    SINK["Iceberg sink connector<br/>append-only"]
+    LANDING[("S3 landing zone<br/>encrypted, 14 days")]
+    LOADER["File Loader · Spark<br/>register · check · append · flip pointer"]
+    FAILED[("S3 failed bucket")]
+  end
+
+  subgraph LAKE["③ Lakehouse · Apache Iceberg · AWS Glue catalog"]
+    BRONZE[("Bronze<br/>append-only, as received")]
+    SILVER[("Silver<br/>ordered merge, up to the transaction cut")]
+    BRANCH["Gold build<br/>on an audit branch"]
+    GATE{"Publish gate<br/>complete and tied<br/>to the paise?"}
+    GOLD[("Gold<br/>published, version-labelled")]
+    HELD["Held branch<br/>kept 14 days"]
+  end
+
+  subgraph SERVE["④ Serving"]
+    CLICKHOUSE[("ClickHouse · BI copy")]
+    CUBE["Cube<br/>one definition per metric"]
+    BOT["MCP chat bot"]
+    SPARK["Spark<br/>audit · ad hoc · features"]
+    AURORA[("Aurora PostgreSQL<br/>behind the Read API")]
+  end
+
+  subgraph USERS["⑤ Consumers"]
+    ANALYSTS["Analysts and finance"]
+    AUDITORS["Auditors"]
+    SCIENTISTS["Data scientists"]
+    APPS["Applications"]
+  end
+
+  subgraph FASTLANE["Fast path · labelled unverified"]
+    FLINK["Flink<br/>events, outbox, reference updates"]
+    FASTTOPIC[["Fast-path topic<br/>verified: false"]]
+  end
+
+  PG --> DBZ
+  EV --> DBZ
+  DBZ --> KAFKA --> SINK --> BRONZE
+  PF --> LANDING
+  OPS --> LANDING
+  API --> LANDING
+  LANDING --> LOADER --> BRONZE
+  LOADER -->|failed checks| FAILED
+  FAILED -.->|resend or approved override| LANDING
+  LOADER -.->|reference updated| KAFKA
+
+  BRONZE --> SILVER --> BRANCH --> GATE
+  GATE -->|pass| GOLD
+  GATE -->|fail| HELD
+
+  GOLD --> CLICKHOUSE --> CUBE --> ANALYSTS
+  CUBE --> BOT --> ANALYSTS
+  GOLD --> SPARK
+  SPARK --> ANALYSTS
+  SPARK --> AUDITORS
+  SPARK --> SCIENTISTS
+  GOLD --> AURORA -->|Read API, with version label| APPS
+
+  KAFKA --> FLINK --> FASTTOPIC --> APPS
+  PG -.->|money read live, bypassing the lake| APPS
+
+  classDef source fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+  classDef ingest fill:#ecfeff,stroke:#0891b2,color:#083344
+  classDef lake fill:#f0fdf4,stroke:#16a34a,color:#052e16
+  classDef gate fill:#fffbeb,stroke:#d97706,color:#451a03
+  classDef held fill:#fef2f2,stroke:#dc2626,color:#450a0a
+  classDef serve fill:#faf5ff,stroke:#9333ea,color:#3b0764
+  classDef user fill:#f8fafc,stroke:#475569,color:#0f172a
+  classDef fast fill:#fff7ed,stroke:#ea580c,color:#431407
+  class PG,EV,PF,OPS,API source
+  class DBZ,KAFKA,SINK,LANDING,LOADER,FAILED ingest
+  class BRONZE,SILVER,BRANCH,GOLD lake
+  class GATE gate
+  class HELD held
+  class CLICKHOUSE,CUBE,BOT,SPARK,AURORA serve
+  class ANALYSTS,AUDITORS,SCIENTISTS,APPS user
+  class FLINK,FASTTOPIC fast

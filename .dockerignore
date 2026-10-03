@@ -1,0 +1,12 @@
+.git
+.github
+.tools
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+docs
+brief
+*.md
+!README.md

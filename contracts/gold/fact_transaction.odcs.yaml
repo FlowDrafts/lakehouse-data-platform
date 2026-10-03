@@ -1,0 +1,73 @@
+# Sample data contract: a gold table. See ../README.md.
+apiVersion: v3.2.0
+kind: DataContract
+id: gold-fact-transaction
+name: gold.fact_transaction
+version: 1.0.0
+status: active
+domain: finance
+description:
+  purpose: One row per transaction across lending, insurance and recharge.
+  usage: Read through Cube, or at a published version (ADR-01), never the raw latest snapshot.
+
+schema:
+  - name: fact_transaction
+    physicalName: glue.gold.fact_transaction
+    physicalType: table
+    businessName: Transactions
+    properties:
+      - name: txn_id
+        logicalType: string
+        primaryKey: true
+        required: true
+        classification: internal
+      - name: customer_id
+        logicalType: string
+        required: true
+        classification: internal
+      - name: business_line
+        logicalType: string
+        required: true
+        classification: internal
+      - name: business_date
+        logicalType: date
+        required: true
+        classification: internal
+      - name: amount_paise
+        logicalType: integer
+        physicalType: bigint
+        required: true
+        classification: internal
+      - name: status
+        logicalType: string
+        required: true
+        classification: internal
+        quality:
+          - metric: invalidValues
+            arguments:
+              validValues: [INITIATED, AUTHORISED, SETTLED, PARTIALLY_SETTLED, REVERSED, FAILED]
+            mustBe: 0
+    quality:
+      - type: text
+        description: >-
+          The publish gate (ADR-05). For each business line and date, the row count, signed
+          paise total, distinct keys and content fingerprint equal the comparison side exactly.
+
+slaProperties:
+  - property: latency
+    value: 20
+    unit: min
+  - property: retention
+    value: 5
+    unit: y
+
+team:
+  name: data-platform
+
+customProperties:
+  - property: inputs                      # completeness: publish only when all have arrived
+    value: [glue.silver.transaction, glue.silver.merchant, glue.silver.partner_settlement]
+  - property: rebuildWindowDays
+    value: 2
+  - property: monthEndTag
+    value: true

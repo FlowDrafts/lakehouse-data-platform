@@ -1,0 +1,36 @@
+# Sample release: builds the job image from a commit that passed CI on main, and pushes it to ECR.
+# Dev and staging pick up the new tag through Argo CD; prod is a reviewed change that pins it.
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write  # GitHub OIDC, so no AWS keys are stored in the repository
+
+jobs:
+  image:
+    name: build and push the job image
+    # Only green commits, and skipped until the AWS role is configured.
+    if: github.event.workflow_run.conclusion == 'success' && vars.AWS_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/platform-jobs:${{ github.event.workflow_run.head_sha }}

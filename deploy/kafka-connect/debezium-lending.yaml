@@ -1,0 +1,63 @@
+# Sample: the Debezium source for the lending database, as a Strimzi KafkaConnector.
+# Personal data is tokenised before anything reaches Kafka (ADR-02). Ordering, retention and
+# heartbeat settings follow ADR-03; transaction metadata feeds the transaction cut (ADR-10).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: cdc-lending
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform-connect          # the Kafka Connect cluster on EKS
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1                                     # one replication slot, one task
+  config:
+    database.hostname: "${secrets:kafka/lending-db:host}"
+    database.user: "${secrets:kafka/lending-db:username}"
+    database.password: "${secrets:kafka/lending-db:password}"
+    database.dbname: lending
+    plugin.name: pgoutput
+    slot.name: debezium_lending
+    publication.name: dbz_lending
+    topic.prefix: cdc.lending
+    table.include.list: public.loan,public.ledger_entry,public.repayment,public.outbox,public.debezium_heartbeat
+
+    # History comes from the one-time export, not from Debezium's own snapshot (ADR-09).
+    snapshot.mode: no_data
+
+    # Keeps an idle database's slot advancing, so WAL doesn't pile up.
+    heartbeat.interval.ms: 10000
+    heartbeat.action.query: UPDATE public.debezium_heartbeat SET ts = now()
+
+    # One BEGIN/END record per transaction, with event counts per table, on its own topic.
+    # The transaction cut is computed from these (ADR-10).
+    provide.transaction.metadata: true
+
+    # Tokenise personal fields in the before and after images, as the contract classifies them,
+    # then flatten each change and add its operation, position and transaction id. Fail closed:
+    # never skip a record, never pass clear text, never log record contents.
+    transforms: tokenise,flatten,incarnation,incarnation_type
+    transforms.tokenise.type: platform.connect.VaultTokenise   # our transform; calls the vault
+    transforms.flatten.type: io.debezium.transforms.ExtractNewRecordState
+    transforms.flatten.add.fields: op,source.lsn,source.table,transaction.id   # -> op, source_lsn, source_table, transaction_id
+    transforms.flatten.add.fields.prefix: ""
+    transforms.flatten.delete.handling.mode: rewrite
+    transforms.incarnation.type: org.apache.kafka.connect.transforms.InsertField$Value
+    transforms.incarnation.static.field: source_incarnation
+    transforms.incarnation.static.value: "1"                   # bumped by a re-snapshot
+    transforms.incarnation_type.type: org.apache.kafka.connect.transforms.Cast$Value
+    transforms.incarnation_type.spec: source_incarnation:int32
+    errors.tolerance: none
+    errors.log.include.messages: false
+
+    # Topics are keyed by primary key, kept 7 days, never compacted.
+    topic.creation.default.partitions: 12
+    topic.creation.default.replication.factor: 3
+    topic.creation.default.min.insync.replicas: 2
+    topic.creation.default.cleanup.policy: delete
+    topic.creation.default.retention.ms: 604800000
+
+    # The transaction topic has one partition, so its order is commit order.
+    topic.creation.groups: transactions
+    topic.creation.transactions.include: cdc\.lending\.transaction
+    topic.creation.transactions.partitions: 1

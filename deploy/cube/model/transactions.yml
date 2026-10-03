@@ -1,0 +1,42 @@
+# Sample Cube model (ADR-07). Each metric is defined once here, for dashboards and the chat bot.
+# The data source is the ClickHouse copy of published gold (CUBEJS_DB_TYPE=clickhouse).
+cubes:
+  - name: transactions
+    sql_table: gold.fact_transaction
+
+    measures:
+      - name: gmv_paise
+        title: Gross merchandise value (paise)
+        sql: amount_paise
+        type: sum
+        filters:
+          - sql: "{CUBE}.status = 'SETTLED'"
+      - name: transaction_count
+        type: count
+
+    dimensions:
+      - name: txn_id
+        sql: txn_id
+        type: string
+        primary_key: true
+      - name: business_line
+        sql: business_line
+        type: string
+      - name: status
+        sql: status
+        type: string
+      - name: business_date
+        sql: business_date
+        type: time
+
+    pre_aggregations:
+      - name: daily_by_business_line
+        measures: [CUBE.gmv_paise, CUBE.transaction_count]
+        dimensions: [CUBE.business_line]
+        time_dimension: CUBE.business_date
+        granularity: day
+        # Rebuilt only when a newly published version has been loaded, never on a timer.
+        refresh_key:
+          sql: >
+            SELECT argMax(snapshot_id, loaded_at) FROM platform.loaded_versions
+            WHERE table_name = 'gold.fact_transaction'

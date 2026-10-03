@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Local scratch — never part of the submission
+scratch/
+*.local.*
+
+# Locally installed toolchain (uv, JDK, Iceberg jar) — never committed
+.tools/
+.venv/
+/.tools/demo-warehouse/

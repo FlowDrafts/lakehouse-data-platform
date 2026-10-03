@@ -1,0 +1,63 @@
+# Sample data contract: a database table captured by CDC. See ../README.md.
+apiVersion: v3.2.0
+kind: DataContract
+id: lending-loan
+name: lending.loan
+version: 1.0.0
+status: active
+domain: lending
+description:
+  purpose: Every loan in the lending service's database, with its current state.
+  usage: Lands in silver as glue.silver.loan, kept equal to the source (ADR-03).
+
+schema:
+  - name: loan
+    physicalName: lending.public.loan
+    physicalType: table
+    properties:
+      - name: loan_id
+        logicalType: string
+        primaryKey: true
+        required: true
+        classification: internal
+      - name: customer_phone
+        logicalType: string
+        classification: restricted        # personal: tokenised before Kafka (ADR-02)
+        customProperties:
+          - property: retentionClass
+            value: loan_record            # erased when the loan's retention period ends
+      - name: principal_paise
+        logicalType: integer
+        physicalType: bigint
+        required: true
+        classification: internal
+      - name: status
+        logicalType: string
+        required: true
+        classification: internal
+        quality:
+          - metric: invalidValues         # a new upstream value fails the contract check
+            arguments:
+              validValues: [APPROVED, DISBURSED, SETTLED, REJECTED, CLOSED]
+            mustBe: 0
+
+slaProperties:
+  - property: latency
+    value: 7
+    unit: min                             # a change is visible in silver
+  - property: retention
+    value: 5
+    unit: y
+
+team:
+  name: lending-engineering
+
+customProperties:
+  - property: ingestion
+    value: cdc                            # Debezium, Kafka, bronze, then an ordered merge
+  - property: orderingKey
+    value: source_lsn                     # changes apply strictly in change-log order
+  - property: silverTable
+    value: glue.silver.loan
+  - property: controlTotals
+    value: daily                          # the source reports totals once a date closes

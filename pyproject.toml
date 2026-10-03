@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# Declared so a reviewer knows exactly which API surface the code was written
+# against. Nothing here needs to be installed to read the code.
+[project]
+name = "lakehouse-exercise"
+version = "0.1.0"
+description = "Design exercise: a lakehouse platform for lending, insurance and recharge"
+requires-python = ">=3.11"
+
+# Pinned to what actually works together, verified against Maven Central rather than
+# assumed: there is NO iceberg-spark-runtime built for Spark 4.2, so 4.1.3 is the
+# newest usable Spark, and JDK 25 is outside Spark 4.1's supported set (see Makefile).
+#
+dependencies = [
+  "pyspark==4.1.3",          # Spark SQL with the Iceberg extensions
+  "pyyaml>=6.0",             # reads the data contracts and the Cube model in the contract check
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2", "ruff==0.14.2"]  # ruff pinned to the version CI runs
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# The shared fixtures live in a named module, loaded as a plugin, instead of a conftest.py.
+addopts = "-q --strict-markers -p tests.fixtures.iceberg_session"
+markers = [
+  "spark: needs a live SparkSession with the Iceberg runtime (slower)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# Deliberately not the pylint (PL) set. On this codebase it flags the things that are the
+# point: comparing to literal amounts in tests, keyword-only arguments on a function whose
+# whole job is to take a decision from several named inputs, and Airflow tasks importing
+# inside the task body, which is how Airflow is meant to be written.
+extend-select = ["I", "UP", "B", "SIM", "DTZ", "C4", "RUF"]
+ignore = [
+  # Our enums are `(str, Enum)` so their members serialise as plain strings through Spark and
+  # JSON without a cast. StrEnum changes what str() returns; not worth the churn.
+  "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Spark TIMESTAMP carries no offset, so a naive datetime is the CORRECT literal to hand it.
+# Scoped rather than disabled globally: DTZ is pointing at a real bug class — a naive
+# source_high_water read back from Spark produced a freshness lag silently wrong by the
+# host's offset, which is why RegistryEntry.lag_seconds now refuses one outright.
+# dict(a=1, b=2) is the readable form for the kwargs-shaped fixture builders here, where the
+# keys are argument names rather than data.
+"tests/*" = ["DTZ001", "C408"]
+"demo/*" = ["DTZ001"]

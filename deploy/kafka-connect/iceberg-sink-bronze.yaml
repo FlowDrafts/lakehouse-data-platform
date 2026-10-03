@@ -1,0 +1,54 @@
+# Sample: the Iceberg sink connectors that append lending's changes to bronze (ADR-03).
+# Append-only: the sink never upserts. Ordering, deletes and deduplication happen later, in the
+# ordered merge into silver. Each record gets its Kafka partition and offset, which the
+# transaction cut uses (ADR-10).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: bronze-lending-changes
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform-connect
+spec:
+  class: org.apache.iceberg.connect.IcebergSinkConnector
+  tasksMax: 4
+  config:
+    topics.regex: cdc\.lending\.public\.(loan|ledger_entry|repayment)
+    # One bronze table per source table, routed by the table name Debezium adds to each change.
+    iceberg.tables: glue.bronze.lending_loan_cdc,glue.bronze.lending_ledger_entry_cdc,glue.bronze.lending_repayment_cdc
+    iceberg.tables.route-field: source_table
+    iceberg.table.glue.bronze.lending_loan_cdc.route-regex: loan
+    iceberg.table.glue.bronze.lending_ledger_entry_cdc.route-regex: ledger_entry
+    iceberg.table.glue.bronze.lending_repayment_cdc.route-regex: repayment
+    iceberg.catalog.catalog-impl: org.apache.iceberg.aws.glue.GlueCatalog
+    iceberg.catalog.warehouse: s3://lakehouse-ap-south-1/warehouse
+    iceberg.catalog.io-impl: org.apache.iceberg.aws.s3.S3FileIO
+    iceberg.control.commit.interval-ms: 60000   # bronze within about two minutes
+    transforms: kafka
+    transforms.kafka.type: org.apache.kafka.connect.transforms.InsertField$Value
+    transforms.kafka.partition.field: kafka_partition
+    transforms.kafka.offset.field: kafka_offset
+    transforms.kafka.timestamp.field: ingest_ts
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: bronze-lending-transactions
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: platform-connect
+spec:
+  class: org.apache.iceberg.connect.IcebergSinkConnector
+  tasksMax: 1                                       # one partition, kept in commit order
+  config:
+    topics: cdc.lending.transaction
+    iceberg.tables: glue.bronze.lending_transactions
+    iceberg.catalog.catalog-impl: org.apache.iceberg.aws.glue.GlueCatalog
+    iceberg.catalog.warehouse: s3://lakehouse-ap-south-1/warehouse
+    iceberg.catalog.io-impl: org.apache.iceberg.aws.s3.S3FileIO
+    iceberg.control.commit.interval-ms: 60000
+    # The offset on this single-partition topic is commit order: the cut's `position`.
+    transforms: kafka
+    transforms.kafka.type: org.apache.kafka.connect.transforms.InsertField$Value
+    transforms.kafka.offset.field: position
+    transforms.kafka.timestamp.field: ingest_ts

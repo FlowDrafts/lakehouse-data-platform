@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install ruff==0.14.2
+      - run: ruff check .
+      - run: ruff format --check .
+      # About a second: every mutation's find-string must still match the source, or that
+      # guard would silently stop being checked. The full mutation run is its own job.
+      - run: python tests/mutation/run.py --check
+
+  tests:
+    name: tests (python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Cache the Iceberg runtime jar
+        uses: actions/cache@v6
+        with:
+          path: .tools/jars
+          key: iceberg-1.11.0
+      - run: pip install -e ".[dev]"
+      - name: Fetch the Iceberg jar
+        run: |
+          mkdir -p .tools/jars
+          f=.tools/jars/iceberg-spark-runtime-4.1_2.13-1.11.0.jar
+          [ -f "$f" ] || curl -sSfL -o "$f" \
+            https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.1_2.13/1.11.0/iceberg-spark-runtime-4.1_2.13-1.11.0.jar
+      - run: pytest -q
+
+  mutation:
+    name: mutation testing (every guard must be guarded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: python -m venv .venv && .venv/bin/pip install -e ".[dev]"
+      - name: Fetch the Iceberg jar
+        run: |
+          mkdir -p .tools/jars
+          curl -sSfL -o .tools/jars/iceberg-spark-runtime-4.1_2.13-1.11.0.jar \
+            https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.1_2.13/1.11.0/iceberg-spark-runtime-4.1_2.13-1.11.0.jar
+      # Breaks each guard in turn and requires a test to fail. A surviving mutation is a
+      # guarantee the code claims but does not hold.
+      - run: .venv/bin/python tests/mutation/run.py
+
+  docker:
+    name: the suite runs inside the image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t lakehouse:ci .
+      - run: docker run --rm lakehouse:ci pytest -q
+
+  contracts:
+    name: contracts follow ODCS v3.2.0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install check-jsonschema==0.38.2 pyyaml
+      # Cube metric filters may only use values the data contracts allow.
+      - run: python tests/contract_check.py
+      # Every data contract must be valid against the standard's own schema.
+      - run: >
+          check-jsonschema
+          --schemafile https://raw.githubusercontent.com/bitol-io/open-data-contract-standard/v3.2.0/schema/odcs-json-schema-v3.2.0.json
+          contracts/sources/*.odcs.yaml contracts/gold/*.odcs.yaml
+
+  deploy:
+    name: deployables are valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install yamllint
+      - run: yamllint -d relaxed deploy/ contracts/
+      - name: Kafka Connect manifests match the Strimzi CRDs
+        run: |
+          curl -sSfL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz | tar xz
+          ./kubeconform -strict -summary \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            deploy/kafka-connect/
+      - name: The DAGs import cleanly
+        run: |
+          pip install "apache-airflow==3.3.2" apache-airflow-providers-cncf-kubernetes \
+            --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt
+          python -c "
+          from airflow.models import DagBag
+          bag = DagBag('deploy/airflow/dags', include_examples=False)
+          assert not bag.import_errors, bag.import_errors
+          print(len(bag.dags), 'DAG(s) loaded')"
+
+  tables:
+    name: table definitions parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install sqlfluff
+      # Syntax only, not style: a statement that doesn't parse fails the build.
+      - run: sqlfluff parse --dialect sparksql tables/iceberg/
+      - run: sqlfluff parse --dialect clickhouse tables/clickhouse/
+      - run: sqlfluff parse --dialect postgres tables/aurora/
+
+  docs:
+    name: no broken links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Local links only. The root README is left out until it is rewritten for the current design.
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress 'docs/**/*.md' 'contracts/**/*.md' 'deploy/**/*.md' 'tables/**/*.md' 'tests/*.md'

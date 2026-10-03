@@ -1,0 +1,6 @@
+# The platform owner reviews every change to what the platform promises:
+# its contracts, its deployables, its table layouts and its decisions.
+/contracts/        @FlowDrafts
+/deploy/           @FlowDrafts
+/tables/           @FlowDrafts
+/docs/decisions/   @FlowDrafts

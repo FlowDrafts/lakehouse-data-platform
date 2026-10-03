@@ -22,3 +22,6 @@ scratch/
 .tools/
 .venv/
 /.tools/demo-warehouse/
+
+# Claude Code: personal overrides stay local; the shared .claude/settings.json is committed
+.claude/settings.local.json

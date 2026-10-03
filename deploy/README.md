@@ -39,7 +39,7 @@ stack from the same code; only sizes and secrets differ.
 
 1. **Pull request.** [CI](../.github/workflows/ci.yml) runs the tests and mutation testing. It
    validates the contracts against the standard, the manifests, the DAGs and the table
-   definitions, and checks doc links.
+   definitions, checks doc links, and scans for leaked secrets and vulnerable dependencies.
 2. **Merge.** Once CI passes on `main`, [the release workflow](../.github/workflows/release.yml)
    builds the job image and pushes it to ECR, tagged with the commit.
 3. **Dev and staging.** Argo CD syncs the change automatically.

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make test:*)",
+      "Bash(make test-fast:*)",
+      "Bash(make contract-check:*)",
+      "Bash(make demo:*)",
+      "Bash(make check:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(.venv/bin/python tests/mutation/run.py --check)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format --check:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

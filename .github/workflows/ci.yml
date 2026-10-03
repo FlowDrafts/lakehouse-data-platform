@@ -153,3 +153,28 @@ jobs:
       - uses: lycheeverse/lychee-action@v2
         with:
           args: --offline --no-progress 'docs/**/*.md' 'contracts/**/*.md' 'deploy/**/*.md' 'tables/**/*.md' 'tests/*.md'
+
+  secrets:
+    name: no secrets in the history
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # every commit, not just the latest
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependencies:
+    name: no known vulnerabilities in dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install -e ".[dev]" pip-audit
+      - run: pip-audit --skip-editable

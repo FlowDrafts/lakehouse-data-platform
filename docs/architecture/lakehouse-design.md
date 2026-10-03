@@ -201,7 +201,7 @@ labels what it serves; it doesn't police queries.
 | | **Derived data** (history, summaries, eligibility) | Read API on Aurora | ~5 min after gold | One whole version per answer, with its label |
 | | **Fast signals** | Fast-path Kafka topic | Seconds | Always `verified: false` |
 | **Data scientists** | Features | Spark on silver's history and gold | Daily | Point-in-time: nothing leaks from after the prediction date |
-| **Auditors** | Any month-end figure, traced to source | Spark on a month-end tag; OpenMetadata | Five years | Tags never expire. Lineage reaches the change-log position or file |
+| **Auditors** | Any month-end figure, traced to source | Spark on a month-end tag; OpenMetadata | Five years | Tags kept five years. Lineage reaches the change-log position or file |
 
 **One version of the truth.** Copies load only whole, labelled versions, the Read API pins the
 versions behind each response, and fast-path signals are labelled unverified
@@ -214,13 +214,32 @@ complete facts (app events, outbox events and reference updates, never raw chang
 publishes signals labelled unverified, also stored in bronze. The cost: nothing verifies them,
 and live and reconciled numbers can disagree.
 
+### 7.6 AI-Assisted Analytics
+
+The chat bot (an MCP server) answers questions through Cube's governed metrics, never by writing
+its own SQL, so it gives the same number as the dashboards. The data catalog supplies the
+context: table descriptions, the business glossary, lineage and each table's contract.
+- **Guardrails:** only published gold; personal data only as tokens; the asker's own access,
+  enforced through Cube's security context and Lake Formation; a question no metric defines is
+  declined and routed to an analyst.
+- **Every answer** carries its version label and freshness.
+- **An evaluation set** of known questions with known answers runs on every change to the Cube
+  model.
+
 ## 8. Security, Privacy and Compliance
 
 - **Tokenisation** ([02](../decisions/02-personal-data-tokenisation.md)): vault-issued random
   tokens, applied in the Debezium transform chain and the File Loader, before anything stores a
   value. If the vault is down, ingestion stops rather than letting clear text through.
-- **Encryption.** KMS at rest, TLS in transit. Raw files sit encrypted in the landing zone for
-  14 days, the only clear values outside the sources and the vault.
+- **Encryption at rest.** SSE-KMS on every S3 prefix, with one key per layer (landing, bronze,
+  silver, gold), so access can be revoked layer by layer. MSK, Aurora and ClickHouse volumes, and
+  the vault's keys, are KMS-encrypted. Raw files sit in the landing zone for 14 days, the only
+  clear values outside the sources and the vault.
+- **Encryption in transit.** TLS 1.2 or later on every hop: MSK with TLS and IAM authentication,
+  Debezium to Postgres with `sslmode=verify-full`, Spark to S3 over HTTPS, and Aurora and
+  ClickHouse with TLS required.
+- **Compression** happens before encryption: zstd for Iceberg's Parquet files and for Kafka
+  producers, and ClickHouse's default LZ4 with ZSTD on large columns.
 - **Access.**
   - Lake Formation grants per table.
   - Readers get silver and gold views, never staging.
@@ -262,8 +281,32 @@ On-call procedures for these failures are in the [runbooks](../runbooks/00-runbo
 ### 9.4 Cost
 
 Order of magnitude only, not modelled. Always-on compute (MSK, Kafka Connect, Spark, Flink) costs
-most, then ClickHouse and Aurora, then about 60 TB of storage. Month-end tags pin files forever,
-which makes them the one retention decision with unbounded cost.
+most, then ClickHouse and Aurora, then about 60 TB of storage. Month-end tags pin their files for
+five years, the one retention decision whose cost grows without a ceiling until then.
+
+**Tracking and alerts.**
+- Every resource carries cost-allocation tags: `business_line`, `layer` and `component`.
+- The AWS Cost and Usage Report lands in S3 and is queried through Athena. A Grafana dashboard
+  shows cost per business line, per layer and per pipeline, and cost per million rows published.
+- AWS Budgets per account, and Cost Anomaly Detection monitors per service and per tag, alert
+  through SNS into the same Alertmanager routes as operational alerts.
+- Signals watched: Spark hours, S3 request counts (a small-files warning), MSK and ClickHouse.
+
+### 9.5 Storage Lifecycle and Archival
+
+S3 lifecycle rules **never expire Iceberg data files**: deleting files behind a table's back
+corrupts it. Lake retention runs through Iceberg itself (`expire_snapshots`,
+`remove_orphan_files`, and deleting partitions past retention). Lifecycle rules cover only the
+prefixes that aren't tables.
+
+| Data | Rule |
+|---|---|
+| Landing zone (raw files) | Expire after 14 days |
+| Failed bucket | Expire after 90 days |
+| Query results and job logs | Expire after 30 days |
+| Kafka topics | 7 days' retention |
+| Iceberg tables (bronze, silver, gold) | S3 Intelligent-Tiering, with Archive *Instant* Access only, so a read never waits for a restore |
+| Month-end tags | Kept five years; exported to Glacier Deep Archive only where regulation needs longer |
 
 ## 10. Key Technical Challenges (Deep Dives)
 

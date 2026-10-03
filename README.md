@@ -64,13 +64,15 @@ Why each was chosen, and what it costs, is in the [decision log](docs/decisions/
 | Design | [docs/architecture/](docs/architecture/lakehouse-design.md) | Technical design document, the overview diagram, and the detailed hand-drawn diagram |
 | Decisions | [docs/decisions/](docs/decisions/00-decision-register.md) | Decision log and ten architecture decision records |
 | Operations | [docs/runbooks/](docs/runbooks/00-runbook-index.md) | On-call runbooks, mapped to alerts |
+| Specifications | [docs/spec/](docs/spec/README.md) | The approved plans that drove the AI-assisted development |
 | Source | [src/lakehouse/](src/lakehouse/) | The hard problems, the ordered merge, and the plumbing stubs |
 | Tests | [tests/](tests/README.md) | Test plan, tests on a real Iceberg engine, mutation testing |
 | Demo | [demo/](demo/run.py) | The three problems end to end, printed step by step |
 | Data contracts | [contracts/](contracts/README.md) | Sample contracts in the Open Data Contract Standard |
 | Table definitions | [tables/](tables/README.md) | Sample DDL for Iceberg, ClickHouse and Aurora |
 | Deployment | [deploy/](deploy/README.md) | Sample Kafka Connect, Airflow and Cube deployables, and how releases work |
-| CI/CD | [.github/](.github/workflows/ci.yml) | CI, release, Dependabot and code owners |
+| CI/CD | [.github/](.github/workflows/ci.yml) | CI (lint, tests, mutation testing, secret and dependency scans), release, Dependabot and code owners |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) · [CLAUDE.md](CLAUDE.md) | How to contribute, and the guide for AI-assisted work in this repo |
 
 ## Quick Start
 

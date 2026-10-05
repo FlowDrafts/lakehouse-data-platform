@@ -103,9 +103,10 @@ and inconsistent, and nobody can say whether a table is current or correct.
 *Figure 2. The detailed architecture, drawn by hand in draw.io; the editable source is
 [lakehouse_architecture.drawio](lakehouse_architecture.drawio).*
 
-Continuous sources arrive through Kafka and bounded ones through S3; gold passes the publish gate
-before serving. Two lanes bypass the lake: money read live from its service, and the Flink fast
-path. Lineage and check results go to OpenMetadata; metrics to VictoriaMetrics and Grafana.
+Continuous sources arrive through Kafka (database changes through Debezium on Kafka Connect, app
+events through an event collector) and bounded ones through S3; gold passes the publish gate
+before serving. Two lanes bypass the lake: money read live from its owning service, and the Flink
+fast path. Lineage and check results go to OpenMetadata; metrics to VictoriaMetrics and Grafana.
 
 ### 6.2 Data Layers (Medallion)
 
@@ -143,7 +144,7 @@ Personal data is tokenised on the way in (section 8).
 | Source | Route | When it misbehaves |
 |---|---|---|
 | **Postgres** (each business) | Debezium → Kafka → connector appends to bronze → ordered merge into silver, up to the transaction cut ([10](../decisions/10-transaction-cut.md)) | **Replays and reordering:** ignored, since only newer changes apply. **A transaction split across topics:** waits until whole. **Unchanged large column:** keeps its value. **Restore:** forces a re-snapshot. **Truncate:** fails loudly. **Stalled connector:** slot lag is alerted and capped |
-| **App events** | Kafka → bronze → deduplicated in silver | **Duplicates:** removed on `event_id`. **Unparseable:** kept, flagged. **Too late for a closed date:** recorded as an exception |
+| **App events** | Event collector (schema check, tokenise) → Kafka → bronze → deduplicated in silver | **Duplicates:** removed on `event_id`. **Unparseable:** kept, flagged. **Too late for a closed date:** recorded as an exception |
 | **Partner files** | S3 → File Loader: register, check, append, flip pointer ([04](../decisions/04-partner-and-ops-files.md)) | **Resend:** treated as a duplicate. **Correction:** replaces the old version. **Parts:** published only when all have arrived. **Truncated:** held. **Missing:** alert when its window closes. **Adjustments to earlier dates:** posted today; closed periods are never rewritten |
 | **Ops sheets** | Same as partner files | **A change to the GL mapping** needs human approval |
 | **Third-party APIs** | Raw response saved to S3 first, then the File Loader | **Retries:** re-parse from S3. **Records visible late:** each pull re-reads a lookback window and deduplicates. **Pages shifting:** paged by key, never by offset. **No completeness signal:** a periodic full sweep |
@@ -229,8 +230,9 @@ context: table descriptions, the business glossary, lineage and each table's con
 ## 8. Security, Privacy and Compliance
 
 - **Tokenisation** ([02](../decisions/02-personal-data-tokenisation.md)): vault-issued random
-  tokens, applied in the Debezium transform chain and the File Loader, before anything stores a
-  value. If the vault is down, ingestion stops rather than letting clear text through.
+  tokens, applied at every entry point before anything stores a value: the Debezium transform
+  chain, the event collector for app events, and the File Loader. If the vault is down, ingestion
+  stops rather than letting clear text through.
 - **Encryption at rest.** SSE-KMS on every S3 prefix, with one key per layer (landing, bronze,
   silver, gold), so access can be revoked layer by layer. MSK, Aurora and ClickHouse volumes, and
   the vault's keys, are KMS-encrypted. Raw files sit in the landing zone for 14 days, the only

@@ -9,8 +9,9 @@
 
 ![Lakehouse architecture: sources, ingestion, the Iceberg lakehouse with its publish gate, serving, and consumers](docs/architecture/lakehouse_architecture.png)
 
-Data flows top to bottom through five layers. Database changes arrive through Debezium and Kafka;
-files and API responses land in S3. Everything is appended to bronze, merged in order into silver,
+Data flows top to bottom through five layers. Database changes arrive through Debezium on Kafka
+Connect, and app events through an event collector, both into Kafka; files and API responses land
+in S3. Everything is appended to bronze, merged in order into silver,
 and built into gold on a branch that a **publish gate** checks before anyone can read it. Money a
 customer sees is read live from its service, and an optional Flink lane serves labelled,
 unverified signals in seconds.

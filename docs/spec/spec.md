@@ -98,6 +98,15 @@ Acceptance criteria M.1–M.3.
   caught;
 - a periodic full sweep is the source's completeness signal.
 
+## US-8 Personal Data Tokenised at Every Entry 📐
+
+*As a customer, I want my personal data stored only as tokens, whichever way it enters.*
+Acceptance criteria:
+- personal fields in database changes, app events and files are tokens before Kafka or bronze
+  stores them;
+- a seeded canary value never appears in clear in Kafka or bronze;
+- if the vault is unavailable, ingestion stops rather than passing clear text.
+
 ## Non-Functional Requirements
 
 From the [design document](../architecture/lakehouse-design.md) §4.2:

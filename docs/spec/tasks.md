@@ -55,6 +55,12 @@ that proves it is done. Mark a task `[x]` in the same change that completes it.
 - [ ] **T16** `snapshot_ops_sheet`: a version per read; GL mapping changes wait for approval.
 - [ ] **T17** `tag_month_end`: tag the published snapshot; kept five years.
 
+### Personal data (US-8)
+
+- [ ] **T19** Event collector: validate the event schema, add the event ID, tokenise personal
+  fields through the vault (fail closed), then produce to Kafka. Files: `pipeline.py` (stub), a
+  `deploy/` sample. Done when: a canary personal value in an event never reaches Kafka in clear.
+
 ### Migration (US-6)
 
 - [ ] **T18** One-time migration: slot first, export from a replica, tag rows with the slot's

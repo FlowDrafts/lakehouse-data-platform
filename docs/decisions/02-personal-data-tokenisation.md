@@ -29,7 +29,7 @@ Where should personal data become a token, and what kind of token should it be?
 |---|---|---|
 | On the way into silver | Simple | Clear values sit in bronze for five years, so erasure would be false |
 | Between Kafka and bronze | Fixes bronze | Kafka holds clear values for 7 days |
-| **In the Debezium transform chain before the message is produced, and in the File Loader as it reads a file** | Nothing retained holds a clear value, Kafka included | Tokenisation sits on the critical ingestion path |
+| **In the Debezium transform chain before the message is produced, in the event collector before an app event is produced, and in the File Loader as it reads a file** | Nothing retained holds a clear value, Kafka included | Tokenisation sits on the critical ingestion path |
 
 **What kind of token**
 
@@ -41,8 +41,9 @@ Where should personal data become a token, and what kind of token should it be?
 
 ## Decision Outcome
 
-Chosen option: **tokenise in the Debezium transform chain and in the File Loader, using
-vault-issued random tokens**, because it's the only combination where no retained layer holds a
+Chosen option: **tokenise at every entry point, using vault-issued random tokens**: in the
+Debezium transform chain for database changes, in the event collector for app events, and in the
+File Loader for files, because it's the only combination where no retained layer holds a
 clear value and erasure is real.
 
 - The same value always gets the same token, by lookup, so joins and watchlist matching still work.

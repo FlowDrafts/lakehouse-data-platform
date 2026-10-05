@@ -11,9 +11,10 @@ flowchart TB
   end
 
   subgraph ING["② Ingestion"]
-    DBZ["Debezium<br/>PII tokenised in the transform chain"]
+    DBZ["Kafka Connect · Debezium source<br/>PII tokenised in the transform chain"]
+    COLLECTOR["Event collector<br/>schema check · PII tokenised"]
     KAFKA[["Kafka · 7-day retention"]]
-    SINK["Iceberg sink connector<br/>append-only"]
+    SINK["Kafka Connect · Iceberg sink<br/>append-only"]
     LANDING[("S3 landing zone<br/>encrypted, 14 days")]
     LOADER["File Loader · Spark<br/>register · check · append · flip pointer"]
     FAILED[("S3 failed bucket")]
@@ -43,13 +44,15 @@ flowchart TB
     APPS["Applications"]
   end
 
+  OWNER["Owning service API<br/>or read replica"]
+
   subgraph FASTLANE["Fast path · labelled unverified"]
     FLINK["Flink<br/>events, outbox, reference updates"]
     FASTTOPIC[["Fast-path topic<br/>verified: false"]]
   end
 
   PG --> DBZ
-  EV --> DBZ
+  EV --> COLLECTOR --> KAFKA
   DBZ --> KAFKA --> SINK --> BRONZE
   PF --> LANDING
   OPS --> LANDING
@@ -72,7 +75,8 @@ flowchart TB
   GOLD --> AURORA -->|Read API, with version label| APPS
 
   KAFKA --> FLINK --> FASTTOPIC --> APPS
-  PG -.->|money read live, bypassing the lake| APPS
+  PG -.-> OWNER
+  OWNER -.->|money read live, not via the lake| APPS
 
   classDef source fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
   classDef ingest fill:#ecfeff,stroke:#0891b2,color:#083344
@@ -82,8 +86,8 @@ flowchart TB
   classDef serve fill:#faf5ff,stroke:#9333ea,color:#3b0764
   classDef user fill:#f8fafc,stroke:#475569,color:#0f172a
   classDef fast fill:#fff7ed,stroke:#ea580c,color:#431407
-  class PG,EV,PF,OPS,API source
-  class DBZ,KAFKA,SINK,LANDING,LOADER,FAILED ingest
+  class PG,EV,PF,OPS,API,OWNER source
+  class DBZ,COLLECTOR,KAFKA,SINK,LANDING,LOADER,FAILED ingest
   class BRONZE,SILVER,BRANCH,GOLD lake
   class GATE gate
   class HELD held

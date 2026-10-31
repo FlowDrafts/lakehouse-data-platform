@@ -4,7 +4,7 @@
 # Versions are pinned together deliberately and the binding constraint is Iceberg, not
 # Spark: there is no iceberg-spark-runtime built for Spark 4.2 (checked on Maven Central),
 # and JDK 25 is outside Spark 4.1's supported set.
-FROM python:3.14-slim-bookworm
+FROM python:3.15-slim-bookworm
 
 ARG ICEBERG_VERSION=1.11.0
 ARG ICEBERG_ARTIFACT=iceberg-spark-runtime-4.1_2.13
